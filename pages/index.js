@@ -1,12 +1,36 @@
-import Head from 'next/head';
-import Image from 'next/image';
-import coffeeStores from '../coffee-stores.json';
-import Banner from '../components/Banner';
-import Card from '../components/Card';
-import styles from '../styles/Home.module.css';
+import Head from "next/head";
+import Image from "next/image";
+import { useEffect } from "react";
+import { useState } from "react";
+import coffeeStores from "../coffee-stores.json";
+import Banner from "../components/Banner";
+import Card from "../components/Card";
+import useTrackLocation from "../hooks/use-track-location";
+import { fetchCoffeeStores, fetchCoffeStores } from "../lib/coffee-store";
+import styles from "../styles/Home.module.css";
 export default function Home(props) {
+  const { handleTrackLocation, location, locationErrorMsg, isTracking } =
+    useTrackLocation();
+  const [fetchedCoffeeStores, setFetchedCoffeeStores] = useState([]);
+  useEffect(() => {
+    const getData = async () => {
+      if (location) {
+        try {
+          const fetchedData = await fetchCoffeeStores(
+            "Coffee shop",
+            location,
+            6
+          );
+          setFetchedCoffeeStores(fetchedData);
+        } catch (e) {
+          console.log(e);
+        }
+      }
+    };
+    getData();
+  }, [location]);
   const handleClick = () => {
-    console.log('hi');
+    handleTrackLocation();
   };
   return (
     <div className={styles.container}>
@@ -17,7 +41,11 @@ export default function Home(props) {
       </Head>
 
       <main className={styles.main}>
-        <Banner buttonText="View Stores nearby" handleClick={handleClick} />
+        <Banner
+          buttonText={isTracking ? "Loading..." : "View Stores nearby"}
+          handleClick={handleClick}
+        />
+        {locationErrorMsg && <p>{locationErrorMsg}</p>}
         <div className={styles.heroImage}>
           <Image
             src="/static/hero-image.png"
@@ -27,16 +55,36 @@ export default function Home(props) {
             height={400}
           />
         </div>
+        {fetchedCoffeeStores.length > 0 && (
+          <h2 className={styles.heading2}>Stores near me</h2>
+        )}
+        <div className={styles.cardLayout}>
+          {fetchedCoffeeStores.map((store) => (
+            <Card
+              key={store.fsq_id}
+              name={store.name}
+              href={`/coffee-store/${store.fsq_id}`}
+              imgUrl={
+                store.imgUrl ||
+                "https://images.unsplash.com/photo-1498804103079-a6351b050096?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=2468&q=80"
+              }
+            />
+          ))}
+        </div>
         {props.coffeeStores.length > 0 && (
           <h2 className={styles.heading2}>Toronto stores</h2>
         )}
+
         <div className={styles.cardLayout}>
           {props.coffeeStores.map((store) => (
             <Card
-              key={store.id}
+              key={store.fsq_id}
               name={store.name}
-              href={`/coffee-store/${store.id}`}
-              imgUrl={store.imgUrl}
+              href={`/coffee-store/${store.fsq_id}`}
+              imgUrl={
+                store.imgUrl ||
+                "https://images.unsplash.com/photo-1498804103079-a6351b050096?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=2468&q=80"
+              }
             />
           ))}
         </div>
@@ -45,6 +93,11 @@ export default function Home(props) {
   );
 }
 export async function getStaticProps() {
+  const coffeeStores = await fetchCoffeeStores(
+    "coffee shop",
+    "43.76,-79.39",
+    6
+  );
   return {
     props: {
       coffeeStores,
