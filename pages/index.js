@@ -2,26 +2,35 @@ import Head from "next/head";
 import Image from "next/image";
 import { useEffect } from "react";
 import { useState } from "react";
+import { useContext } from "react";
 import coffeeStores from "../coffee-stores.json";
 import Banner from "../components/Banner";
 import Card from "../components/Card";
 import useTrackLocation from "../hooks/use-track-location";
 import { fetchCoffeeStores, fetchCoffeStores } from "../lib/coffee-store";
 import styles from "../styles/Home.module.css";
+import { ACTION_TYPES, StoreContext } from "../store/store-context";
 export default function Home(props) {
-  const { handleTrackLocation, location, locationErrorMsg, isTracking } =
+  const { handleTrackLocation, locationErrorMsg, isTracking } =
     useTrackLocation();
-  const [fetchedCoffeeStores, setFetchedCoffeeStores] = useState([]);
+  // const [fetchedCoffeeStores, setFetchedCoffeeStores] = useState([]);
+  const { dispatch, state } = useContext(StoreContext);
+  const { coffeeStores: fetchedCoffeeStores, location } = state;
   useEffect(() => {
     const getData = async () => {
       if (location) {
         try {
-          const fetchedData = await fetchCoffeeStores(
-            "Coffee shop",
-            location,
-            6
+          const resp = await fetch(
+            `/api/getCoffeeStoresByLocation?location=${location}&limit=6`
           );
-          setFetchedCoffeeStores(fetchedData);
+          const fetchedData = await resp.json();
+          // setFetchedCoffeeStores(fetchedData);
+          dispatch({
+            type: ACTION_TYPES.SET_COFFEE_STORES,
+            payload: {
+              coffeeStores: fetchedData,
+            },
+          });
         } catch (e) {
           console.log(e);
         }
@@ -93,11 +102,7 @@ export default function Home(props) {
   );
 }
 export async function getStaticProps() {
-  const coffeeStores = await fetchCoffeeStores(
-    "coffee shop",
-    "43.76,-79.39",
-    6
-  );
+  const coffeeStores = await fetchCoffeeStores("43.76,-79.39", 6);
   return {
     props: {
       coffeeStores,
